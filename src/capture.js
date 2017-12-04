@@ -9,6 +9,8 @@ function listen (appRoot, port, options) {
     var log = null;
     options = options || {};
 
+    options.response = false;
+    
     var allowInsecure = options.insecure;
     var enableZip = options.zip;
     var verbose = options.verbose;
@@ -52,7 +54,14 @@ function listen (appRoot, port, options) {
         if (fileName === '/') {
             fileName = 'root';
         }
-        return path.resolve(root, util.format("%s-%s.%s", fileName.replace(/^([^?]*).*/, '$1').replace(/[\/=\?:&\\]/g, '_').replace(/^_/, ''), (new Date()).valueOf(), type.substring(0, 3)));
+        var name = path.resolve(root, util.format("%s-%s.%s",
+            (new Date()).valueOf(), 
+            fileName.replace(/^([^?]*).*/, '$1').replace(/[\/=\?:&\\]/g, '_').replace(/^_/, ''),
+            type.substring(0, 3)));
+
+        console.log("  filename: " + name);
+
+        return name;
     };
 
     var writeDictionaryToStream = function (stream, dict) {
@@ -81,7 +90,7 @@ function listen (appRoot, port, options) {
             resStream = new require('stream').PassThrough();
         }
 
-        if (options.response || options.request) {
+        if (options.response) {
             fresStream = fs.createWriteStream(getFileName(outputLocation, req, 'response'));
             resStream.pipe(fresStream);
         }
@@ -93,14 +102,18 @@ function listen (appRoot, port, options) {
         // verbose mode
         if (verbose && !options.silent) {
             reqStream.pipe(process.stdout, { end: false });
-            resStream.pipe(process.stdout, { end: false });
+            if (options.response) {
+                resStream.pipe(process.stdout, {end: false});
+            }
 
             reqStream.on('finish', function () {
                 process.stdout.write('\r\n');
             });
-            resStream.on('finish', function () {
-                process.stdout.write('\r\n');
-            });
+            if (options.response) {
+                resStream.on('finish', function () {
+                    process.stdout.write('\r\n');
+                });
+            }
         }
 
         routeRequest(req, res, reqStream, resStream);
@@ -196,7 +209,8 @@ function listen (appRoot, port, options) {
         fsUtil.ensurePath(outputLocation);
     }
 
-    var bindHost = options.bindall ? '0.0.0.0' : 'localhost';
+    // var bindHost = options.bindall ? '0.0.0.0' : 'localhost';
+    var bindHost = '0.0.0.0';
     proxy.listen(port, bindHost);
     log('Proxy running on http://%s:%s/ -> %s', bindHost, port, appRoot);
 

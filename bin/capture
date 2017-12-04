@@ -51,7 +51,7 @@ function wrapText(str, columns) {
 
 var executed = false;
 
-program.version('0.2.7') // automatically updated from package.json
+program.version('0.2.6') // automatically updated from package.json
     .usage('<applicationRoot> [options]')
     .option('-p, --port <portNumber>', 'Port number to start listening on [8000]', '8000')
     .option('-B, --bindall', 'Bind to all interfaces (not just localhost)')
@@ -61,7 +61,7 @@ program.version('0.2.7') // automatically updated from package.json
     .option('-k, --insecure', 'Allow connections to SSL sites without valid certs')
     .option('-z, --zip', 'Enable compression. By default the `accept-encoding` header is removed')
     .option('-v, --verbose', 'Output requests and responses')
-    ;
+;
 
 program.command('replay')
     .usage('<file|alias> [options]')
@@ -69,12 +69,37 @@ program.command('replay')
     .option('-H, --headers', 'Output headers')
     .option('-k, --insecure', 'Allow connections to SSL sites without valid certs')
     .option('-v, --verbose', 'Output requests')
-    .action(function (file, cmd) {
-        var contents = capture.load(file);
-        capture.replay(contents, {
-            outputHeaders: cmd.headers,
-            insecure: cmd.insecure || program.insecure,
-            verbose: cmd.verbose || program.verbose
+    .action(function (dir, cmd) {
+
+        console.log("dir: " + dir);
+
+        fs.readdir(dir, function (err, items) {
+
+            var getTime = function (file) {
+                return parseInt(file.split("-")[0]);
+            };
+
+            var initTime = getTime(items[0]);
+
+            for (var i = 0; i < items.length; i++) {
+                var file = items[i];
+
+                var delay = getTime(file) - initTime;
+
+                console.log(file + " delay " + delay);
+
+                setTimeout(function (_file) {
+
+                    var contents = capture.load(dir + "/" + _file);
+
+                    capture.replay(contents, {
+                        outputHeaders: cmd.headers,
+                        insecure: cmd.insecure || program.insecure,
+                        verbose: cmd.verbose || program.verbose
+                    });
+                }, delay, file);
+
+            }
         });
         executed = true;
     });

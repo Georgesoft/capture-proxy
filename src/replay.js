@@ -3,6 +3,8 @@ var http = require('http');
 var https = require('https');
 
 function parseRequest(payload) {
+    console.log("parse: " + payload);
+    
     var headDelimiterExp = /\r?\n\r?\n/;
     var headerExp = /^([^\s]+)\s([^\s]+)\sHTTP\/([\d.]+)\r?\n/i;
 
