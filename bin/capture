@@ -83,7 +83,7 @@ program.command('replay')
 
         console.log("dir: " + dir);
 
-        var stats = staistics.initStats(50, 10000);
+        var stats = new staistics.initStats(50, 10000);
 
         fs.readdir(dir, function (err, items) {
 
@@ -103,8 +103,8 @@ program.command('replay')
                         outputHeaders: cmd.headers,
                         insecure: cmd.insecure || program.insecure,
                         verbose: cmd.verbose || program.verbose
-                    }, function (res, ping) {
-                        stats.process(ping);
+                    }, function (url, res, ping) {
+                        stats.process(url, ping);
                         console.log("     req time: %d", ping);
                     });
 
@@ -123,8 +123,8 @@ program.command('replay')
                 replay0(items, 0);
             }
 
-            var testCount = 3;
-            var parallelism = 5;
+            var testCount = 1;
+            var parallelism = 1;
             
             var threadsActive = parallelism; 
 
@@ -137,12 +137,19 @@ program.command('replay')
                         } else {
                             if (--threadsActive == 0) {
                                 console.log("Total finish!");
+                                
+                                for (var url in stats.results) {
+                                    var stat = stats.results[url];
 
-                                var dist = stats.distribution();
+                                    console.log("URL %s", url);
 
-                                for (var i = 0; i < dist.length; i++) {
-                                    console.log("%d %d", dist[i].t, dist[i].f);
+                                    var dist = stat.distribution();
+
+                                    for (var i = 0; i < dist.length; i++) {
+                                        console.log("%d %d", dist[i].t, dist[i].f);
+                                    }                                    
                                 }
+
                             }
                             
                             console.log("THREADS LEFT: " + threadsActive);

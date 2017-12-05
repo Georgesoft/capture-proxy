@@ -1,4 +1,4 @@
-function initStats(delta, maxTime) {
+function initData(delta, maxTime) {
 
     var stats = {
         data: [],
@@ -46,6 +46,46 @@ function initStats(delta, maxTime) {
     } while (t < maxTime);
 
     return stats;
+}
+
+function initStats(delta, maxTime) {
+    var stats = {};
+
+    function getAllStats(url, prevSlashIndex, result) {
+        var slashIndex = url.indexOf("/", prevSlashIndex + 1);
+        
+        function getOrCreate(subPath) {
+            var stat = stats[subPath];
+            if (!stat) {
+                stat = initData(delta, maxTime);
+                stats[subPath] = stat;
+            }
+            return stat;
+        }
+        
+        if (slashIndex > 0) {
+            result.push(getOrCreate(url.slice(0, slashIndex)));
+            return getAllStats(url, slashIndex, result)
+        } else {
+            result.push(getOrCreate(url));
+            return result;
+        }
+    }
+
+    function forUrl(url) {
+        return getAllStats(url.slice(url.indexOf("://") + 3), 0, []);
+    }
+    
+    this.process = function (url, time) {
+        var stats = forUrl(url);
+        for (var step in stats) {
+            stats[step].process(time);
+        }
+        
+        return stats;
+    };
+    
+    this.results = stats;
 }
 
 module.exports = {
