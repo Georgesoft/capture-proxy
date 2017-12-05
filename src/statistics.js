@@ -30,6 +30,8 @@ function initData(delta, maxTime) {
                     return;
                 }
             }
+
+            this.data[this.data.length - 1].count++;
         }
 
     };

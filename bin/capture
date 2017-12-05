@@ -79,11 +79,14 @@ program.command('replay')
     .option('-H, --headers', 'Output headers')
     .option('-k, --insecure', 'Allow connections to SSL sites without valid certs')
     .option('-v, --verbose', 'Output requests')
+    .option('--parallelism <parallelism>', 'Number of parrallel test running')
+    .option('--iter <iter>', 'Total number of replays for each of parallely running tests')
+    .option('--delay <delay>', 'Delay between test in seconds')
     .action(function (dir, cmd) {
 
         console.log("dir: " + dir);
 
-        var stats = new staistics.initStats(50, 10000);
+        var stats = new staistics.initStats(10, 5000);
 
         fs.readdir(dir, function (err, items) {
 
@@ -123,8 +126,9 @@ program.command('replay')
                 replay0(items, 0);
             }
 
-            var testCount = 1;
-            var parallelism = 1;
+            var testCount = cmd.iter || 1;
+            var parallelism = cmd.parallelism || 1;
+            var delay = cmd.delay || 10;
             
             var threadsActive = parallelism; 
 
@@ -133,7 +137,7 @@ program.command('replay')
                     replay(function onFinish(testsLeft) {
                         if (testsLeft > 0) {
                             console.log("  RUN TEST: %d", testsLeft);
-                            setTimeout(replay, Math.random() * 10000, onFinish, testsLeft - 1);
+                            setTimeout(replay, Math.random() * delay * 1000, onFinish, testsLeft - 1);
                         } else {
                             if (--threadsActive == 0) {
                                 console.log("Total finish!");
@@ -150,6 +154,7 @@ program.command('replay')
                                     }                                    
                                 }
 
+                                process.exit(0);
                             }
                             
                             console.log("THREADS LEFT: " + threadsActive);
