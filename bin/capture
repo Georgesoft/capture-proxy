@@ -3,6 +3,14 @@
 var program = require('../lib/commander/');
 var capture = require('../index');
 var fs = require('fs');
+var staistics = require('../src/statistics');
+
+function fetch(value) {
+    return function () {
+        return value;
+    }
+}
+
 
 function wrapLine(str, columns) {
     var wordExp = /([\S]+)(\s*)/g, space = /\s*$/, word, currentLine = '', lines = [];
@@ -75,36 +83,62 @@ program.command('replay')
 
         console.log("dir: " + dir);
 
+        var stats = staistics.initStats(50, 10000);
+        
         fs.readdir(dir, function (err, items) {
 
-            var getTime = function (file) {
+            function getTime(file) {
                 return parseInt(file.split("-")[0]);
-            };
+            }
 
-            var replay = function (_items, _index) {
-                var _file = _items[_index];
-
-                console.log("REPLAYING: " + _file);
-
-                var contents = capture.load(dir + "/" + _file);
-                capture.replay(contents, {
-                    outputHeaders: cmd.headers,
-                    insecure: cmd.insecure || program.insecure,
-                    verbose: cmd.verbose || program.verbose
-                });
-
-                if (_index < _items.length - 1) {
-                    var _delay = getTime(_items[_index + 1]) - getTime(_items[_index]);
-                    
-                    console.log("delay: " + _delay);
-                    
-                    setTimeout(replay, _delay, _items, _index + 1);
-                } else {
-                    console.log("FINISH");
-                }
-            };
+            var testCount = 3;
             
-            replay(items, 0);            
+            function replay(onFinish, testsLeft) {
+                function replay0(_items, _index) {
+                    var _file = _items[_index];
+
+                    console.log("REPLAYING: " + _file);
+
+                    var contents = capture.load(dir + "/" + _file);
+
+                    capture.replay(contents, {
+                        outputHeaders: cmd.headers,
+                        insecure: cmd.insecure || program.insecure,
+                        verbose: cmd.verbose || program.verbose
+                    }, function (res, ping) {
+                        stats.process(ping);
+                        console.log("     req time: %d", ping);
+                    });
+
+                    if (_index < _items.length - 1) {
+                        var _delay = getTime(_items[_index + 1]) - getTime(_items[_index]);
+
+                        console.log("delay: " + _delay);
+
+                        setTimeout(replay0, _delay, _items, _index + 1);
+                    } else {
+                        console.log("FINISH");
+                        onFinish(testsLeft);
+                    }
+                }
+
+                replay0(items, 0);
+            }
+            
+            replay(function onFinish(testsLeft) {
+                if (testsLeft > 0) {
+                    console.log("  RUN TEST: %d", testsLeft);
+                    replay(onFinish, testsLeft - 1);
+                } else {
+                    console.log("Total finish!");
+                    
+                    var dist = stats.distribution();
+                    
+                    for(var i = 0; i < dist.length; i++) {
+                        console.log("%d %d", dist[i].t, dist[i].f);
+                    }
+                }
+            }, testCount)
         });
         executed = true;
     });

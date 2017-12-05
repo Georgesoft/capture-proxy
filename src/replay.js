@@ -72,6 +72,8 @@ function replay(payload, opts, callback) {
         writeDictionaryToStream(process.stdout, rq.headers);
     }
 
+    var startedAt = Date.now();
+
     var req = client.request(options, function (response) {
         if (opts.outputHeaders) {
             console.log('HTTP/%s %s%s', response.httpVersion, response.statusCode, response.statusMessage ? ' ' + response.statusMessage : '');
@@ -82,7 +84,7 @@ function replay(payload, opts, callback) {
         // response.pipe(process.stdout);
 
         if (callback) {
-            callback(response);
+            callback(response, Date.now() - startedAt);
         }
     });
 
