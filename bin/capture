@@ -46,7 +46,9 @@ function wrapText(str, columns) {
         return str;
     }
     var lines = str.split('\n');
-    return lines.map(function (l) { return wrapLine(l, columns); }).join('\n');
+    return lines.map(function (l) {
+        return wrapLine(l, columns);
+    }).join('\n');
 }
 
 var executed = false;
@@ -79,27 +81,30 @@ program.command('replay')
                 return parseInt(file.split("-")[0]);
             };
 
-            var initTime = getTime(items[0]);
+            var replay = function (_items, _index) {
+                var _file = _items[_index];
 
-            for (var i = 0; i < items.length; i++) {
-                var file = items[i];
+                console.log("REPLAYING: " + _file);
 
-                var delay = getTime(file) - initTime;
+                var contents = capture.load(dir + "/" + _file);
+                capture.replay(contents, {
+                    outputHeaders: cmd.headers,
+                    insecure: cmd.insecure || program.insecure,
+                    verbose: cmd.verbose || program.verbose
+                });
 
-                console.log(file + " delay " + delay);
-
-                setTimeout(function (_file) {
-
-                    var contents = capture.load(dir + "/" + _file);
-
-                    capture.replay(contents, {
-                        outputHeaders: cmd.headers,
-                        insecure: cmd.insecure || program.insecure,
-                        verbose: cmd.verbose || program.verbose
-                    });
-                }, delay, file);
-
-            }
+                if (_index < _items.length - 1) {
+                    var _delay = getTime(_items[_index + 1]) - getTime(_items[_index]);
+                    
+                    console.log("delay: " + _delay);
+                    
+                    setTimeout(replay, _delay, _items, _index + 1);
+                } else {
+                    console.log("FINISH");
+                }
+            };
+            
+            replay(items, 0);            
         });
         executed = true;
     });
