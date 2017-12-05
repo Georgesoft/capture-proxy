@@ -1,13 +1,3 @@
-// var stats = {
-//     delta : 50,
-//     data : [
-//         {
-//             t : 0,
-//             count : 100
-//         }
-//     ]
-// };
-
 function initStats(delta, maxTime) {
 
     var stats = {
@@ -29,7 +19,7 @@ function initStats(delta, maxTime) {
                     f: data[i].count / sum
                 }
             }
-            
+
             return distribution;
         },
 

@@ -84,15 +84,13 @@ program.command('replay')
         console.log("dir: " + dir);
 
         var stats = staistics.initStats(50, 10000);
-        
+
         fs.readdir(dir, function (err, items) {
 
             function getTime(file) {
                 return parseInt(file.split("-")[0]);
             }
 
-            var testCount = 3;
-            
             function replay(onFinish, testsLeft) {
                 function replay0(_items, _index) {
                     var _file = _items[_index];
@@ -124,21 +122,35 @@ program.command('replay')
 
                 replay0(items, 0);
             }
+
+            var testCount = 3;
+            var parallelism = 5;
             
-            replay(function onFinish(testsLeft) {
-                if (testsLeft > 0) {
-                    console.log("  RUN TEST: %d", testsLeft);
-                    replay(onFinish, testsLeft - 1);
-                } else {
-                    console.log("Total finish!");
-                    
-                    var dist = stats.distribution();
-                    
-                    for(var i = 0; i < dist.length; i++) {
-                        console.log("%d %d", dist[i].t, dist[i].f);
-                    }
-                }
-            }, testCount)
+            var threadsActive = parallelism; 
+
+            for (var i = 0; i < parallelism; i++) {
+                setTimeout(function () {
+                    replay(function onFinish(testsLeft) {
+                        if (testsLeft > 0) {
+                            console.log("  RUN TEST: %d", testsLeft);
+                            setTimeout(replay, Math.random() * 10000, onFinish, testsLeft - 1);
+                        } else {
+                            if (--threadsActive == 0) {
+                                console.log("Total finish!");
+
+                                var dist = stats.distribution();
+
+                                for (var i = 0; i < dist.length; i++) {
+                                    console.log("%d %d", dist[i].t, dist[i].f);
+                                }
+                            }
+                            
+                            console.log("THREADS LEFT: " + threadsActive);
+                        }
+                    }, testCount);
+                });
+            }
+
         });
         executed = true;
     });
