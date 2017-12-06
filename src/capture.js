@@ -55,7 +55,7 @@ function listen (appRoot, port, options) {
             fileName = 'root';
         }
         var name = path.resolve(root, util.format("%s-%s.%s",
-            (new Date()).valueOf(), 
+            (new Date()).valueOf(),
             fileName.replace(/^([^?]*).*/, '$1').replace(/[\/=\?:&\\]/g, '_').replace(/^_/, ''),
             type.substring(0, 3)));
 

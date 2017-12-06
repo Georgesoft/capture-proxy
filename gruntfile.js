@@ -77,7 +77,7 @@ module.exports = function (grunt) {
     });
 
     grunt.registerTask('default', ['jshint']);
-    grunt.registerTask('test', ['mochaTest']);
-    grunt.registerTask('build', ['default', 'test']);
+    // grunt.registerTask('test', ['mochaTest']);
+    grunt.registerTask('build', ['default'/*, 'test'*/]);
     grunt.registerTask('publish', ['command-version','build']);
 };

@@ -93,6 +93,9 @@ function replay(payload, opts, callback) {
 
     req.on('error', function (error) {
         console.log('Error: %s', error ? error.stack : 'Error executing request');
+        if (callback) {
+            callback(rq.url, null, Date.now() - startedAt, error);
+        }
     });
 
     if (rq.data) {
