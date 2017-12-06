@@ -5,6 +5,7 @@ function initData(delta, maxTime) {
     var stats = {
         data: [],
         errors: 0,
+        requests: 0,
         ping: [],
 
         distribution: function () {
@@ -30,6 +31,7 @@ function initData(delta, maxTime) {
 
         process: function (time) {
             this.ping.push(time);
+            this.requests++;
             
             for (var i = 0; i < this.data.length; i++) {
                 if (this.data[i].t > time) {
@@ -43,6 +45,7 @@ function initData(delta, maxTime) {
 
         error: function (err) {
             this.errors++;
+            this.requests++;
         },
 
         // quantile: function (percentage) {
@@ -59,6 +62,10 @@ function initData(delta, maxTime) {
         
         quantile: function (percentage) {
             return quantile(this.ping, percentage, {'sorted': false});
+        },
+
+        errorRate: function () {
+            return this.errors / this.requests * 100;
         }
 
     };

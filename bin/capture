@@ -166,6 +166,7 @@ program.command('replay')
                             var stat = stats.results[url];
 
                             console.log("URL %s", url);
+                            console.log("error rate: %d%", stat.errorRate());
                             console.log("q25 %d", stat.quantile(0.25));
                             console.log("q50 %d", stat.quantile(0.5));
                             console.log("q75 %d", stat.quantile(0.75));
