@@ -51,9 +51,6 @@ function writeDictionaryToStream(stream, dict) {
 function replay(payload, opts, callback) {
     var rq = parseRequest(payload);
     var url = require('url').parse(rq.url);
-    
-    console.log("URL: " + rq.url);
-    
     var client = url.protocol === 'https:' ? https : http;
     opts = opts || {};
     var options = {

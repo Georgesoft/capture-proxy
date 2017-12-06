@@ -5,6 +5,7 @@ function initData(delta, maxTime) {
     var stats = {
         data: [],
         errors: 0,
+        ping: [],
 
         distribution: function () {
             var i;
@@ -28,6 +29,8 @@ function initData(delta, maxTime) {
         },
 
         process: function (time) {
+            this.ping.push(time);
+            
             for (var i = 0; i < this.data.length; i++) {
                 if (this.data[i].t > time) {
                     this.data[i - 1].count++;
@@ -42,16 +45,20 @@ function initData(delta, maxTime) {
             this.errors++;
         },
 
+        // quantile: function (percentage) {
+        //     var sorted = [];
+        //     for (var i = 0; i < this.data.length; i++) {
+        //         var point = this.data[i];
+        //         for (var j = 0; j < point.count; j++) {
+        //             sorted.push(point.t + delta / 2);
+        //         }
+        //     }
+        //
+        //     return quantile(sorted, percentage, {'sorted': true});
+        // }
+        
         quantile: function (percentage) {
-            var sorted = [];
-            for (var i = 0; i < this.data.length; i++) {
-                var point = this.data[i];
-                for (var j = 0; j < point.count; j++) {
-                    sorted.push(point.t + delta / 2);
-                }
-            }
-
-            return quantile(sorted, percentage, {'sorted': true});
+            return quantile(this.ping, percentage, {'sorted': false});
         }
 
     };
