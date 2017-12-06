@@ -81,86 +81,121 @@ program.command('replay')
     .option('-v, --verbose', 'Output requests')
     .option('--parallelism <parallelism>', 'Number of parrallel test running')
     .option('--iter <iter>', 'Total number of replays for each of parallely running tests')
-    .option('--delay <delay>', 'Delay between test in seconds')
+    .option('--delay <delay>', 'Delay between replays in seconds')
+    .option('--warmup <warmup>', 'Number of initial warm up test iterations (their results bypass statistics)')
+    .option('--discretization <discretization>', "Request time distribution function's discretization")
+    .option('--maxtime <maxtime>', "Request time distribution function's max argument value")
     .action(function (dir, cmd) {
 
         console.log("dir: " + dir);
 
-        var stats = new staistics.initStats(10, 5000);
-
         fs.readdir(dir, function (err, items) {
 
-            function getTime(file) {
-                return parseInt(file.split("-")[0]);
-            }
+            function runTest(onTestFinish, testCount, parallelism, delay) {
+                var stats = new staistics.initStats(cmd.discretization || 10, cmd.maxtime || 5000);
 
-            function replay(onFinish, testsLeft) {
-                function replay0(_items, _index) {
-                    var _file = _items[_index];
+                var threadsActive = parallelism;
 
-                    console.log("REPLAYING: " + _file);
-
-                    var contents = capture.load(dir + "/" + _file);
-
-                    capture.replay(contents, {
-                        outputHeaders: cmd.headers,
-                        insecure: cmd.insecure || program.insecure,
-                        verbose: cmd.verbose || program.verbose
-                    }, function (url, res, ping) {
-                        stats.process(url, ping);
-                        console.log("     req time: %d", ping);
-                    });
-
-                    if (_index < _items.length - 1) {
-                        var _delay = getTime(_items[_index + 1]) - getTime(_items[_index]);
-
-                        console.log("delay: " + _delay);
-
-                        setTimeout(replay0, _delay, _items, _index + 1);
-                    } else {
-                        console.log("FINISH");
-                        onFinish(testsLeft);
-                    }
+                function getTime(file) {
+                    return parseInt(file.split("-")[0]);
                 }
 
-                replay0(items, 0);
-            }
+                function replay(onFinish, testsLeft) {
+                    function replay0(_items, _index) {
+                        var _file = _items[_index];
 
-            var testCount = cmd.iter || 1;
-            var parallelism = cmd.parallelism || 1;
-            var delay = cmd.delay || 10;
-            
-            var threadsActive = parallelism; 
+                        console.log("REPLAYING: " + _file);
 
-            for (var i = 0; i < parallelism; i++) {
-                setTimeout(function () {
-                    replay(function onFinish(testsLeft) {
-                        if (testsLeft > 0) {
-                            console.log("  RUN TEST: %d", testsLeft);
-                            setTimeout(replay, Math.random() * delay * 1000, onFinish, testsLeft - 1);
+                        var contents = capture.load(dir + "/" + _file);
+
+                        capture.replay(contents, {
+                            outputHeaders: cmd.headers,
+                            insecure: cmd.insecure || program.insecure,
+                            verbose: cmd.verbose || program.verbose
+                        }, function (url, res, ping) {
+                            stats.process(url, ping);
+                            console.log("     req time: %d", ping);
+                        });
+
+                        if (_index < _items.length - 1) {
+                            var _delay = getTime(_items[_index + 1]) - getTime(_items[_index]);
+
+                            console.log("delay: " + _delay);
+
+                            setTimeout(replay0, _delay, _items, _index + 1);
                         } else {
-                            if (--threadsActive == 0) {
-                                console.log("Total finish!");
-                                
-                                for (var url in stats.results) {
-                                    var stat = stats.results[url];
+                            console.log("FINISH");
+                            onFinish(testsLeft);
+                        }
+                    }
 
-                                    console.log("URL %s", url);
+                    replay0(items, 0);
+                }
 
-                                    var dist = stat.distribution();
-
-                                    for (var i = 0; i < dist.length; i++) {
-                                        console.log("%d %d", dist[i].t, dist[i].f);
-                                    }                                    
+                for (var i = 0; i < parallelism; i++) {
+                    setTimeout(function () {
+                        replay(function onFinish(testsLeft) {
+                            if (testsLeft > 0) {
+                                console.log("  RUN TEST: %d", testsLeft);
+                                setTimeout(replay, Math.random() * delay * 1000, onFinish, testsLeft - 1);
+                            } else {
+                                if (--threadsActive == 0) {
+                                    console.log("Total finish!");
+                                    if (onTestFinish) {
+                                        onTestFinish(stats);
+                                    }
                                 }
 
-                                process.exit(0);
+                                console.log("THREADS LEFT: " + threadsActive);
                             }
-                            
-                            console.log("THREADS LEFT: " + threadsActive);
+                        }, testCount);
+                    });
+                }
+
+                return stats;
+            }
+
+            function runMainTest() {
+                console.log("Stating tests.");
+                var startTime = Date.now(); 
+                runTest(
+                    function (stats) {
+                        console.log("Tests finished at %d sec", (Date.now() - startTime) / 1000);
+
+                        for (var url in stats.results) {
+                            var stat = stats.results[url];
+
+                            console.log("URL %s", url);
+
+                            var dist = stat.distribution();
+
+                            for (var i = 0; i < dist.length; i++) {
+                                console.log("%d %d", dist[i].t, dist[i].f);
+                            }
                         }
-                    }, testCount);
-                });
+
+                        process.exit(0);
+                    },
+
+                    cmd.iter || 1,
+                    cmd.parallelism || 1,
+                    cmd.delay || 10
+                );
+            }
+
+            if (cmd.warmup) {
+                console.log("Warming up...");
+                runTest(
+                    function () {
+                        console.log("Warmed up.");
+                        runMainTest();
+                    },
+                    cmd.warmup,
+                    cmd.parallelism || 1,
+                    cmd.delay || 10
+                );
+            } else {
+                runMainTest();
             }
 
         });
