@@ -9,7 +9,7 @@ function listen (appRoot, port, options) {
     var log = null;
     options = options || {};
 
-    options.response = false;
+    options.response = true;
     
     var allowInsecure = options.insecure;
     var enableZip = options.zip;

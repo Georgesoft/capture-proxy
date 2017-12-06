@@ -89,7 +89,14 @@ program.command('replay')
 
         console.log("dir: " + dir);
 
-        fs.readdir(dir, function (err, items) {
+        fs.readdir(dir, function (err, content) {
+            
+            var requests = [];
+            for (var i = 0; i < content.length; i++) {
+                if (content[i].indexOf(".req") > 0) {
+                    requests.push(content[i]);
+                }
+            }
 
             function runTest(onTestFinish, testCount, parallelism, delay) {
                 var stats = new staistics.initStats(cmd.discretization || 10, cmd.maxtime || 5000);
@@ -126,7 +133,7 @@ program.command('replay')
                         }
                     }
 
-                    replay0(items, 0);
+                    replay0(requests, 0);
                 }
 
                 for (var i = 0; i < parallelism; i++) {
