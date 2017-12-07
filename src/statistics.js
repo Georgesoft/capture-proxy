@@ -32,7 +32,7 @@ function initData(delta, maxTime) {
         process: function (time) {
             this.ping.push(time);
             this.requests++;
-            
+
             for (var i = 0; i < this.data.length; i++) {
                 if (this.data[i].t > time) {
                     this.data[i - 1].count++;
@@ -59,7 +59,7 @@ function initData(delta, maxTime) {
         //
         //     return quantile(sorted, percentage, {'sorted': true});
         // }
-        
+
         quantile: function (percentage) {
             return quantile(this.ping, percentage, {'sorted': false});
         },
@@ -127,6 +127,24 @@ function initStats(delta, maxTime) {
     };
 
     this.results = stats;
+    this.maxConcurrentRequests = 0;
+    this.concurrentRequests = {};
+    this.nextRequestId = 0;
+
+    this.startRequest = function () {
+        var requestId = this.nextRequestId++;
+        this.concurrentRequests[requestId] = 1;
+        var concurrentRequests = Object.keys(this.concurrentRequests).length;
+
+        if (concurrentRequests > this.maxConcurrentRequests) {
+            this.maxConcurrentRequests = concurrentRequests;
+        }
+        return requestId;
+    };
+
+    this.finishRequest = function (requestId) {
+        delete this.concurrentRequests[requestId];
+    }
 }
 
 module.exports = {

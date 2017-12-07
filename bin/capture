@@ -126,7 +126,7 @@ program.command('replay')
                             } else {
                                 stats.error(url, ping);
                             }
-                        }, reqPerSec);
+                        }, reqPerSec, stats);
 
                         if (_index < _items.length - 1) {
                             var _delay = getTime(_items[_index + 1]) - getTime(_items[_index]);
@@ -158,7 +158,7 @@ program.command('replay')
                 }
 
                 for (var i = 0; i < parallelism; i++) {
-                    setTimeout(singleThreadTask, 0, i);
+                    setTimeout(singleThreadTask, Math.random() * delay * 1000, i);
                 }
 
                 return stats;
@@ -169,6 +169,7 @@ program.command('replay')
             function onMainTestFinish(stats) {
                 console.log("Tests finished at %d sec", (Date.now() - startTime) / 1000);
                 console.log("Results:\n");
+                console.log("Max concurrent requests: %d", stats.maxConcurrentRequests);
 
                 for (var url in stats.results) {
                     var stat = stats.results[url];

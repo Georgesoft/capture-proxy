@@ -48,7 +48,7 @@ function writeDictionaryToStream(stream, dict) {
     }
 }
 
-function replay(payload, opts, callback, reqPerSec) {
+function replay(payload, opts, callback, reqPerSec, stats) {
     var rq = parseRequest(payload);
     var url = require('url').parse(rq.url);
     var client = url.protocol === 'https:' ? https : http;
@@ -73,8 +73,12 @@ function replay(payload, opts, callback, reqPerSec) {
     }
 
     var startedAt = Date.now();
+    
+    var requestId = stats.startRequest();
 
     var req = client.request(options, function (response) {
+        stats.finishRequest(requestId);
+        
         if (opts.outputHeaders) {
             console.log('HTTP/%s %s%s', response.httpVersion, response.statusCode, response.statusMessage ? ' ' + response.statusMessage : '');
             writeDictionaryToStream(process.stdout, response.headers);
