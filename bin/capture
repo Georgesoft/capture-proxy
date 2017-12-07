@@ -90,7 +90,7 @@ program.command('replay')
         console.log("dir: " + dir);
 
         fs.readdir(dir, function (err, content) {
-            
+
             var requests = [];
             for (var i = 0; i < content.length; i++) {
                 if (content[i].indexOf(".req") > 0) {
@@ -136,26 +136,26 @@ program.command('replay')
                     replay0(requests, 0);
                 }
 
-                for (var i = 0; i < parallelism; i++) {
-                    /* jshint -W083 */
-                    setTimeout(function (threadId) {
-                        replay(function onFinish(testsLeft) {
-                            if (threadId === 0) {
-                                console.log("  Replayed: left ~ %d", testsLeft);
-                            }
-                            
-                            if (testsLeft > 0) {
-                                setTimeout(replay, Math.random() * delay * 1000, onFinish, testsLeft - 1);
-                            } else {
-                                if (--threadsActive === 0) {
-                                    if (onTestFinish) {
-                                        onTestFinish(stats);
-                                    }
+                function singleThreadTask(threadId) {
+                    replay(function onFinish(testsLeft) {
+                        if (threadId === 0) {
+                            console.log("  Replayed one more. Left ~ %d", testsLeft);
+                        }
+
+                        if (testsLeft > 0) {
+                            setTimeout(replay, Math.random() * delay * 1000, onFinish, testsLeft - 1);
+                        } else {
+                            if (--threadsActive === 0) {
+                                if (onTestFinish) {
+                                    onTestFinish(stats);
                                 }
                             }
-                        }, testCount);
-                    }, 0, i);
-                    /* jshint +W083 */
+                        }
+                    }, testCount);
+                }
+
+                for (var i = 0; i < parallelism; i++) {
+                    setTimeout(singleThreadTask, 0, i);
                 }
 
                 return stats;
