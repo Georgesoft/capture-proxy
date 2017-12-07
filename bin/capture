@@ -3,7 +3,10 @@
 var program = require('../lib/commander/');
 var capture = require('../index');
 var fs = require('fs');
-var staistics = require('../src/statistics');
+var statistics = require('../src/statistics');
+
+var ReqPerSecConstructor = require('../src/req-avg').create;
+var reqPerSec = new ReqPerSecConstructor(10);
 
 function fetch(value) {
     return function () {
@@ -99,7 +102,7 @@ program.command('replay')
             }
 
             function runTest(onTestFinish, testCount, parallelism, delay) {
-                var stats = new staistics.initStats(cmd.discretization || 10, cmd.maxtime || 5000);
+                var stats = new statistics.initStats(cmd.discretization || 10, cmd.maxtime || 5000);
 
                 var threadsActive = parallelism;
 
@@ -123,7 +126,7 @@ program.command('replay')
                             } else {
                                 stats.error(url, ping);
                             }
-                        });
+                        }, reqPerSec);
 
                         if (_index < _items.length - 1) {
                             var _delay = getTime(_items[_index + 1]) - getTime(_items[_index]);
@@ -161,40 +164,50 @@ program.command('replay')
                 return stats;
             }
 
+            var startTime = Date.now();
+
+            function onMainTestFinish(stats) {
+                console.log("Tests finished at %d sec", (Date.now() - startTime) / 1000);
+                console.log("Results:\n");
+
+                for (var url in stats.results) {
+                    var stat = stats.results[url];
+
+                    console.log("URL %s", url);
+                    console.log("error rate: %d%", stat.errorRate());
+                    console.log("q25 %d", stat.quantile(0.25));
+                    console.log("q50 %d", stat.quantile(0.5));
+                    console.log("q75 %d", stat.quantile(0.75));
+                    console.log("q90 %d", stat.quantile(0.9));
+                    console.log("q99 %d", stat.quantile(0.99));
+
+                    // var dist = stat.distribution();
+                    //
+                    // for (var i = 0; i < dist.length; i++) {
+                    //     console.log("%d %d", dist[i].t, dist[i].f);
+                    // }
+                    console.log("\n");
+                }
+
+                process.exit(0);
+            }
+
             function runMainTest() {
                 console.log("Stating tests.");
-                var startTime = Date.now();
-                runTest(
-                    function (stats) {
-                        console.log("Tests finished at %d sec", (Date.now() - startTime) / 1000);
-                        console.log("Results:\n");
-
-                        for (var url in stats.results) {
-                            var stat = stats.results[url];
-
-                            console.log("URL %s", url);
-                            console.log("error rate: %d%", stat.errorRate());
-                            console.log("q25 %d", stat.quantile(0.25));
-                            console.log("q50 %d", stat.quantile(0.5));
-                            console.log("q75 %d", stat.quantile(0.75));
-                            console.log("q90 %d", stat.quantile(0.9));
-                            console.log("q99 %d", stat.quantile(0.99));
-
-                            // var dist = stat.distribution();
-                            //
-                            // for (var i = 0; i < dist.length; i++) {
-                            //     console.log("%d %d", dist[i].t, dist[i].f);
-                            // }
-                            console.log("\n");
-                        }
-
-                        process.exit(0);
-                    },
-
+                var testResults = runTest(
+                    onMainTestFinish,
                     (cmd.iter || 1) - 1,
                     cmd.parallelism || 1,
                     cmd.delay || 10
                 );
+
+                process.on('SIGINT', function() {
+                    console.log("Caught interrupt signal");
+
+                    onMainTestFinish(testResults);
+
+                    process.exit();
+                });
             }
 
             if (cmd.warmup) {
@@ -212,7 +225,14 @@ program.command('replay')
                 runMainTest();
             }
 
+            function outAvgReqPerSec() {
+                console.log("req/sec = %d", reqPerSec.avgPerSec());
+                setTimeout(outAvgReqPerSec, 5000);
+            }
+            setTimeout(outAvgReqPerSec, 5000);
+
         });
+
         executed = true;
     });
 

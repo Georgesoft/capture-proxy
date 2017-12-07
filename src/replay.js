@@ -48,7 +48,7 @@ function writeDictionaryToStream(stream, dict) {
     }
 }
 
-function replay(payload, opts, callback) {
+function replay(payload, opts, callback, reqPerSec) {
     var rq = parseRequest(payload);
     var url = require('url').parse(rq.url);
     var client = url.protocol === 'https:' ? https : http;
@@ -82,6 +82,8 @@ function replay(payload, opts, callback) {
         }
 
         // response.pipe(process.stdout);
+
+        reqPerSec.tick();
 
         if (callback) {
             callback(rq.url, response, Date.now() - startedAt);
