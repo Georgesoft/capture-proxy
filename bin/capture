@@ -88,9 +88,13 @@ program.command('replay')
     .option('--warmup <warmup>', 'Number of initial warm up test iterations (their results bypass statistics)')
     .option('--discretization <discretization>', "Request time distribution function's discretization")
     .option('--maxtime <maxtime>', "Request time distribution function's max argument value")
+    .option('--auth <auth>', "Authorization token")
     .action(function (dir, cmd) {
 
         console.log("dir: " + dir);
+        if (cmd.auth) {
+            console.log("auth token: " + cmd.auth);
+        }
 
         fs.readdir(dir, function (err, content) {
 
@@ -126,7 +130,7 @@ program.command('replay')
                             } else {
                                 stats.error(url, ping);
                             }
-                        }, reqPerSec, stats);
+                        }, reqPerSec, stats, cmd.auth);
 
                         if (_index < _items.length - 1) {
                             var _delay = getTime(_items[_index + 1]) - getTime(_items[_index]);
@@ -140,9 +144,14 @@ program.command('replay')
                 }
 
                 function singleThreadTask(threadId) {
+                    var replayStarted = Date.now();
+
                     replay(function onFinish(testsLeft) {
                         if (threadId === 0) {
-                            console.log("  Replayed one more. Left ~ %d", testsLeft);
+                            var timeSpent = (Date.now() - replayStarted) / 1000;
+                            var estimate = timeSpent * testsLeft;
+                            console.log("  Replayed one more in %d. Left ~ %d (%d min %d sec)",
+                                timeSpent, testsLeft, estimate / 60, estimate % 60);
                         }
 
                         if (testsLeft > 0) {
@@ -202,7 +211,7 @@ program.command('replay')
                     cmd.delay || 10
                 );
 
-                process.on('SIGINT', function() {
+                process.on('SIGINT', function () {
                     console.log("Caught interrupt signal");
 
                     onMainTestFinish(testResults);
@@ -230,6 +239,7 @@ program.command('replay')
                 console.log("req/sec = %d", reqPerSec.avgPerSec());
                 setTimeout(outAvgReqPerSec, 5000);
             }
+
             setTimeout(outAvgReqPerSec, 5000);
 
         });

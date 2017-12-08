@@ -48,7 +48,7 @@ function writeDictionaryToStream(stream, dict) {
     }
 }
 
-function replay(payload, opts, callback, reqPerSec, stats) {
+function replay(payload, opts, callback, reqPerSec, stats, authToken) {
     var rq = parseRequest(payload);
     var url = require('url').parse(rq.url);
     var client = url.protocol === 'https:' ? https : http;
@@ -58,10 +58,15 @@ function replay(payload, opts, callback, reqPerSec, stats) {
         port: url.port,
         method: rq.method,
         path: url.path,
-        headers: rq.headers,
+        headers: JSON.parse(JSON.stringify(rq.headers)),
         httpVersion: rq.httpVersion,
         rejectUnauthorized: !opts.insecure
     };
+
+    //override auth token
+    if (authToken) {
+        options.headers.authorization = "Bearer " + authToken;
+    }
 
     if (opts.verbose && opts.outputHeaders) {
         console.log('%s %s HTTP/%s',
@@ -69,7 +74,7 @@ function replay(payload, opts, callback, reqPerSec, stats) {
             rq.url,
             options.httpVersion);
 
-        writeDictionaryToStream(process.stdout, rq.headers);
+        writeDictionaryToStream(process.stdout, options.headers);
     }
 
     var startedAt = Date.now();
@@ -95,7 +100,10 @@ function replay(payload, opts, callback, reqPerSec, stats) {
     });
 
     req.on('error', function (error) {
+        stats.finishRequest(requestId);
+
         console.log('Error: %s', error ? error.stack : 'Error executing request');
+
         if (callback) {
             callback(rq.url, null, Date.now() - startedAt, error);
         }
