@@ -89,6 +89,9 @@ program.command('replay')
     .option('--discretization <discretization>', "Request time distribution function's discretization")
     .option('--maxtime <maxtime>', "Request time distribution function's max argument value")
     .option('--auth <auth>', "Authorization token")
+    .option('--host <host>', "Custom host (overrides original host used in request)")
+    .option('--customPort <customPort>', "Custom port (overrides original port used in request)")
+    .option('--protocol <protocol>', "Custom protocol (overrides original protocol used in request)")
     .action(function (dir, cmd) {
 
         console.log("dir: " + dir);
@@ -97,6 +100,7 @@ program.command('replay')
         }
 
         fs.readdir(dir, function (err, content) {
+            var stats;
 
             var requests = [];
             for (var i = 0; i < content.length; i++) {
@@ -106,7 +110,7 @@ program.command('replay')
             }
 
             function runTest(onTestFinish, testCount, parallelism, delay) {
-                var stats = new statistics.initStats(cmd.discretization || 10, cmd.maxtime || 5000);
+                stats = new statistics.initStats(cmd.discretization || 10, cmd.maxtime || 5000);
 
                 var threadsActive = parallelism;
 
@@ -123,14 +127,18 @@ program.command('replay')
                         capture.replay(contents, {
                             outputHeaders: cmd.headers,
                             insecure: cmd.insecure || program.insecure,
-                            verbose: cmd.verbose || program.verbose
+                            verbose: cmd.verbose || program.verbose,
+                            overrideHost: cmd.host,
+                            overridePort: cmd.customPort,
+                            protocol: cmd.protocol,
+                            overrideAuth: cmd.auth
                         }, function (url, res, ping, err) {
                             if (!err) {
                                 stats.process(url, ping);
                             } else {
                                 stats.error(url, ping);
                             }
-                        }, reqPerSec, stats, cmd.auth);
+                        }, reqPerSec, stats);
 
                         if (_index < _items.length - 1) {
                             var _delay = getTime(_items[_index + 1]) - getTime(_items[_index]);
@@ -236,7 +244,7 @@ program.command('replay')
             }
 
             function outAvgReqPerSec() {
-                console.log("req/sec = %d", reqPerSec.avgPerSec());
+                console.log("req/sec = %d   concurrency = %d", reqPerSec.avgPerSec(), stats.maxConcurrentRequests);
                 setTimeout(outAvgReqPerSec, 5000);
             }
 

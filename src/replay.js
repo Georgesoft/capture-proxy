@@ -4,7 +4,7 @@ var https = require('https');
 
 function parseRequest(payload) {
     // console.log("parse: " + payload);
-    
+
     var headDelimiterExp = /\r?\n\r?\n/;
     var headerExp = /^([^\s]+)\s([^\s]+)\sHTTP\/([\d.]+)\r?\n/i;
 
@@ -23,9 +23,16 @@ function parseRequest(payload) {
             version = headerMatch[3];
             headers = head.substring(headerMatch.index + headerMatch[0].length)
                 .split(/\r?\n/)
-                .map(function (h) { return /^([^\s:]+)\s?:\s?(.*)$/.exec(h); })
-                .filter(function (m) { return m; })
-                .reduce(function (obj, a) { obj[a[1]] = a[2]; return obj; }, {});
+                .map(function (h) {
+                    return /^([^\s:]+)\s?:\s?(.*)$/.exec(h);
+                })
+                .filter(function (m) {
+                    return m;
+                })
+                .reduce(function (obj, a) {
+                    obj[a[1]] = a[2];
+                    return obj;
+                }, {});
 
             return {
                 method: method,
@@ -48,14 +55,14 @@ function writeDictionaryToStream(stream, dict) {
     }
 }
 
-function replay(payload, opts, callback, reqPerSec, stats, authToken) {
+function replay(payload, opts, callback, reqPerSec, stats) {
     var rq = parseRequest(payload);
     var url = require('url').parse(rq.url);
-    var client = url.protocol === 'https:' ? https : http;
+    var client = ((opts.protocol || url.protocol) === 'https:') ? https : http;
     opts = opts || {};
     var options = {
-        hostname: url.hostname,
-        port: url.port,
+        hostname: opts.overrideHost || url.hostname,
+        port: opts.overridePort || url.port,
         method: rq.method,
         path: url.path,
         headers: JSON.parse(JSON.stringify(rq.headers)),
@@ -64,8 +71,8 @@ function replay(payload, opts, callback, reqPerSec, stats, authToken) {
     };
 
     //override auth token
-    if (authToken) {
-        options.headers.authorization = "Bearer " + authToken;
+    if (opts.overrideAuth) {
+        options.headers.authorization = "Bearer " + opts.overrideAuth;
     }
 
     if (opts.verbose && opts.outputHeaders) {
@@ -78,17 +85,25 @@ function replay(payload, opts, callback, reqPerSec, stats, authToken) {
     }
 
     var startedAt = Date.now();
-    
+
     var requestId = stats.startRequest();
 
     var req = client.request(options, function (response) {
         stats.finishRequest(requestId);
-        
+
         if (opts.outputHeaders) {
             console.log('HTTP/%s %s%s', response.httpVersion, response.statusCode, response.statusMessage ? ' ' + response.statusMessage : '');
             writeDictionaryToStream(process.stdout, response.headers);
             console.log('');
         }
+
+        response.on('data', function (d) {
+            //nop
+        });
+
+        response.on('end', function () {
+            // console.log("resp end")
+        });
 
         // response.pipe(process.stdout);
 
@@ -97,6 +112,13 @@ function replay(payload, opts, callback, reqPerSec, stats, authToken) {
         if (callback) {
             callback(rq.url, response, Date.now() - startedAt);
         }
+    });
+
+    req.on('socket', function (socket) {
+        socket.setTimeout(300000);
+        socket.on('timeout', function () {
+            req.abort();
+        });
     });
 
     req.on('error', function (error) {
