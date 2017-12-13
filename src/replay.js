@@ -75,6 +75,10 @@ function replay(payload, opts, callback, reqPerSec, stats) {
         options.headers.authorization = "Bearer " + opts.overrideAuth;
     }
 
+    if (opts.acceptEncoding) {
+        options.headers['Accept-Encoding'] = opts.acceptEncoding;
+    }
+
     if (opts.verbose && opts.outputHeaders) {
         console.log('%s %s HTTP/%s',
             rq.method,
@@ -88,6 +92,8 @@ function replay(payload, opts, callback, reqPerSec, stats) {
 
     var requestId = stats.startRequest();
 
+    reqPerSec.tick();
+
     var req = client.request(options, function (response) {
         stats.finishRequest(requestId);
 
@@ -97,21 +103,21 @@ function replay(payload, opts, callback, reqPerSec, stats) {
             console.log('');
         }
 
-        response.on('data', function (d) {
+        var totalSize = 0;
+        
+        response.on('data', function (chunk) {
             //nop
+            totalSize += chunk.length;
         });
 
         response.on('end', function () {
-            // console.log("resp end")
+            // console.log("totalSize = %d %s", totalSize, rq.url);
+
+            if (callback) {
+                callback(rq.url, response, Date.now() - startedAt);
+            }
         });
 
-        // response.pipe(process.stdout);
-
-        reqPerSec.tick();
-
-        if (callback) {
-            callback(rq.url, response, Date.now() - startedAt);
-        }
     });
 
     req.on('socket', function (socket) {

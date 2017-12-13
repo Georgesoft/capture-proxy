@@ -92,11 +92,15 @@ program.command('replay')
     .option('--host <host>', "Custom host (overrides original host used in request)")
     .option('--customPort <customPort>', "Custom port (overrides original port used in request)")
     .option('--protocol <protocol>', "Custom protocol (overrides original protocol used in request)")
+    .option('--encoding <encoding>', "Custom protocol (overrides original protocol used in request)")
     .action(function (dir, cmd) {
 
         console.log("dir: " + dir);
         if (cmd.auth) {
             console.log("auth token: " + cmd.auth);
+        }
+        if (cmd.encoding) {
+            console.log("acceptEncoding: " + cmd.encoding);
         }
 
         fs.readdir(dir, function (err, content) {
@@ -131,7 +135,8 @@ program.command('replay')
                             overrideHost: cmd.host,
                             overridePort: cmd.customPort,
                             protocol: cmd.protocol,
-                            overrideAuth: cmd.auth
+                            overrideAuth: cmd.auth,
+                            acceptEncoding: cmd.encoding
                         }, function (url, res, ping, err) {
                             if (!err) {
                                 stats.process(url, ping);
