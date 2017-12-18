@@ -14,7 +14,7 @@ function create(windowSize) {
 
             // console.log(JSON.stringify(this.stats))
         }
-    }
+    };
 }
 
 module.exports = {

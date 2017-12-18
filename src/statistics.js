@@ -144,7 +144,7 @@ function initStats(delta, maxTime) {
 
     this.finishRequest = function (requestId) {
         delete this.concurrentRequests[requestId];
-    }
+    };
 }
 
 module.exports = {

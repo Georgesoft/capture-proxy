@@ -12,18 +12,6 @@ function save (filePath, name) {
     fs.writeFileSync(path.join(saveFolder, name), fs.readFileSync(filePath));
 }
 
-function load (name) {
-    var res = cache[name];
-    if (res) {
-        return res;
-    } else {
-        res = load0(name);
-        cache[name] = res;
-    }
-
-    return res;
-}
-
 function load0 (name) {
     var fileName = name;
     if (fs.existsSync(fileName)) {
@@ -34,6 +22,18 @@ function load0 (name) {
         return fs.readFileSync(fileName, 'utf-8');
     }
     return null;
+}
+
+function load (name) {
+    var res = cache[name];
+    if (res) {
+        return res;
+    } else {
+        res = load0(name);
+        cache[name] = res;
+    }
+
+    return res;
 }
 
 module.exports = {
